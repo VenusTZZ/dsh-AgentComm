@@ -15,6 +15,8 @@ window.__ModuleLoader__.load({
     const NS = 'agentcomm'
     const API = '/agentcomm/api'
     const EVENTS = '/agentcomm/events'
+    /** Room a conversation-view card asked the full page to open. */
+    let pendingRoomId = null
 
     const EN = {
       loading: 'Loading…',
@@ -64,6 +66,12 @@ window.__ModuleLoader__.load({
       aboutRepo: 'GitHub',
       roomsUnit: 'rooms',
       agentsUnit: 'online',
+      viewTitle: 'AgentComm chats',
+      viewSub: 'Chat overview and plugin info',
+      viewOpen: 'Open full page',
+      viewEmpty: 'No chats yet',
+      viewEmptyHint: 'Open the full page and create the first one',
+      viewRooms: 'Chats',
     }
 
     const ZH = {
@@ -114,6 +122,12 @@ window.__ModuleLoader__.load({
       aboutRepo: 'GitHub',
       roomsUnit: '个群',
       agentsUnit: '个在线',
+      viewTitle: 'AgentComm 群聊',
+      viewSub: '群聊总览与插件信息',
+      viewOpen: '打开完整页面',
+      viewEmpty: '还没有群聊',
+      viewEmptyHint: '打开完整页面创建第一个群聊',
+      viewRooms: '群聊',
     }
 
     const PALETTE = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0891b2', '#16a34a', '#ca8a04', '#475569']
@@ -233,6 +247,24 @@ window.__ModuleLoader__.load({
       },
       h('path', { d: 'M3.5 6.5A2.5 2.5 0 0 1 6 4h8a2.5 2.5 0 0 1 2.5 2.5v4A2.5 2.5 0 0 1 14 13H9.2l-3.2 2.4V13H6a2.5 2.5 0 0 1-2.5-2.5v-4Z' }),
       h('path', { d: 'M9 16.5A2.5 2.5 0 0 0 11.5 19h3.3l3.2 2.4V19h.5a2.5 2.5 0 0 0 2.5-2.5v-3A2.5 2.5 0 0 0 18.5 11H17' }))
+    }
+
+    function InfoCard({ snapshot, t, className }) {
+      return h('div', { className: `ac-about${className === undefined ? '' : ` ${className}`}` },
+        h('div', { className: 'ac-about-head' },
+          h(AgentCommIcon, { size: 14, active: false }),
+          h('span', { className: 'ac-about-name' }, snapshot?.plugin?.name ?? t('app')),
+          typeof snapshot?.plugin?.version === 'string' && snapshot.plugin.version.length > 0
+            && h('span', { className: 'ac-about-ver' }, `v${snapshot.plugin.version}`)),
+        h('div', { className: 'ac-about-desc' }, t('aboutDesc')),
+        h('div', { className: 'ac-about-stats' },
+          `${(snapshot?.rooms ?? []).length} ${t('roomsUnit')} · ${(snapshot?.agents ?? []).filter(agent => agent.status === 'idle').length} ${t('agentsUnit')}`),
+        repositoryHref(snapshot?.plugin?.repository).length > 0 && h('a', {
+          className: 'ac-about-link',
+          href: repositoryHref(snapshot.plugin.repository),
+          target: '_blank',
+          rel: 'noreferrer',
+        }, `${t('aboutRepo')} ↗`))
     }
 
     const CSS = `
@@ -358,6 +390,29 @@ window.__ModuleLoader__.load({
       .ac-about-stats { font-size: 10.5px; color: var(--dsw-alias-label-secondary); }
       .ac-about-link { font-size: 11px; color: var(--dsw-alias-brand-primary); text-decoration: none; }
       .ac-about-link:hover { text-decoration: underline; }
+      .ac-view { height: 100%; min-height: 0; overflow-y: auto; padding: 22px 24px; display: flex;
+        flex-direction: column; gap: 12px; background: var(--dsw-alias-bg-base);
+        color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 1.5; }
+      .ac-view * { box-sizing: border-box; }
+      .ac-view-head { display: flex; align-items: center; gap: 10px; }
+      .ac-view-title { font-size: 15px; font-weight: 600; }
+      .ac-view-sub { font-size: 11.5px; color: var(--dsw-alias-label-secondary); }
+      .ac-view .ac-about-page { margin: 0; padding: 12px 13px; }
+      .ac-view-section { margin-top: 4px; font-size: 11px; font-weight: 600; letter-spacing: .4px;
+        text-transform: uppercase; color: var(--dsw-alias-label-secondary); }
+      .ac-view-rooms { display: flex; flex-direction: column; gap: 6px; }
+      .ac-view-room { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 11px;
+        border-radius: 10px; border: 1px solid var(--dsw-alias-border-l1);
+        background: var(--dsw-alias-bg-layer-1); color: inherit; cursor: pointer; text-align: left; }
+      .ac-view-room:hover { border-color: var(--dsw-alias-border-l2); }
+      .ac-view-room-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      .ac-view-room-title { font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .ac-view-room-sub { font-size: 11.5px; color: var(--dsw-alias-label-secondary);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .ac-view-net { color: var(--dsw-alias-state-success-primary); }
+      .ac-view-empty { padding: 26px 0; display: flex; flex-direction: column; gap: 4px;
+        text-align: center; color: var(--dsw-alias-label-secondary); }
+      .ac-view-actions { display: flex; justify-content: flex-end; }
       @media (max-width: 1100px) { .ac-members { display: none; } }
       @media (max-width: 760px) { .ac-rail { width: 190px; flex-basis: 190px; } }
     `
@@ -408,7 +463,11 @@ window.__ModuleLoader__.load({
           const next = await request('/state')
           setSnapshot(next)
           const rooms = Array.isArray(next?.rooms) ? next.rooms : []
-          if (activeRef.current === null && rooms.length > 0) {
+          const pending = pendingRoomId
+          pendingRoomId = null
+          if (pending !== null && rooms.some(room => room.id === pending)) {
+            await selectRoom(pending)
+          } else if (activeRef.current === null && rooms.length > 0) {
             await selectRoom(rooms[0].id)
           } else if (activeRef.current !== null && !rooms.some(room => room.id === activeRef.current)) {
             activeRef.current = null
@@ -652,21 +711,7 @@ window.__ModuleLoader__.load({
             className: 'ac-new',
             onClick: () => setCreating(true),
           }, `+ ${t('newRoom')}`),
-          h('div', { className: 'ac-about' },
-            h('div', { className: 'ac-about-head' },
-              h(AgentCommIcon, { size: 14, active: false }),
-              h('span', { className: 'ac-about-name' }, snapshot?.plugin?.name ?? t('app')),
-              typeof snapshot?.plugin?.version === 'string' && snapshot.plugin.version.length > 0
-                && h('span', { className: 'ac-about-ver' }, `v${snapshot.plugin.version}`)),
-            h('div', { className: 'ac-about-desc' }, t('aboutDesc')),
-            h('div', { className: 'ac-about-stats' },
-              `${(snapshot?.rooms ?? []).length} ${t('roomsUnit')} · ${(snapshot?.agents ?? []).filter(agent => agent.status === 'idle').length} ${t('agentsUnit')}`),
-            repositoryHref(snapshot?.plugin?.repository).length > 0 && h('a', {
-              className: 'ac-about-link',
-              href: repositoryHref(snapshot.plugin.repository),
-              target: '_blank',
-              rel: 'noreferrer',
-            }, `${t('aboutRepo')} ↗`)))
+          h(InfoCard, { snapshot, t }))
 
         const chat = h('section', { className: 'ac-chat' },
           activeRoom === null
@@ -889,12 +934,89 @@ window.__ModuleLoader__.load({
           networkDialog)
       }
 
+      function AgentCommView() {
+        const [snapshot, setSnapshot] = React.useState(null)
+        const [error, setError] = React.useState('')
+        const [, bumpLocale] = React.useState(0)
+
+        React.useEffect(() => ctx.locale.subscribe(() => bumpLocale(value => value + 1)), [])
+
+        React.useEffect(() => {
+          let alive = true
+          void request('/state').then(data => {
+            if (alive) setSnapshot(data)
+          }).catch(reason => {
+            if (alive) setError(String(reason?.message ?? reason))
+          })
+          const source = new EventSource(EVENTS)
+          source.addEventListener('state', event => {
+            if (!alive) return
+            try {
+              setSnapshot(JSON.parse(event.data))
+            } catch {
+              // A malformed frame is replaced by the next one.
+            }
+          })
+          return () => {
+            alive = false
+            source.close()
+          }
+        }, [])
+
+        const rooms = snapshot?.rooms ?? []
+
+        function open(id) {
+          if (id !== undefined) pendingRoomId = id
+          ctx.layout.selectPanel('agentcomm')
+        }
+
+        return h('div', { className: 'ac-view' },
+          h('style', { key: 'agentcomm-view-styles' }, CSS),
+          h('div', { className: 'ac-view-head' },
+            h(Avatar, { name: 'AgentComm', size: 34 }),
+            h('div', null,
+              h('div', { className: 'ac-view-title' }, t('viewTitle')),
+              h('div', { className: 'ac-view-sub' }, t('viewSub')))),
+          h(InfoCard, { snapshot, t, className: 'ac-about-page' }),
+          h('div', { className: 'ac-view-section' }, t('viewRooms')),
+          rooms.length === 0
+            ? h('div', { className: 'ac-view-empty' },
+                h('div', { className: 'ac-empty-title' }, t('viewEmpty')),
+                h('div', { className: 'ac-empty-hint' }, t('viewEmptyHint')))
+            : h('div', { className: 'ac-view-rooms' },
+                rooms.map(room => h('button', {
+                  key: room.id,
+                  type: 'button',
+                  className: 'ac-view-room',
+                  onClick: () => open(room.id),
+                },
+                h(Avatar, { name: room.name, size: 30 }),
+                h('span', { className: 'ac-view-room-body' },
+                  h('span', { className: 'ac-view-room-title' },
+                    room.name,
+                    room.network?.connected === true && h('span', { className: 'ac-view-net' }, ` · ${t('connected')}`)),
+                  h('span', { className: 'ac-view-room-sub' },
+                    room.lastMessage === null
+                      ? `${room.members.length} ${t('membersCount')}`
+                      : `${room.lastMessage.senderName}: ${room.lastMessage.text}`))))),
+          h('div', { className: 'ac-view-actions' },
+            h('button', { type: 'button', className: 'ac-btn primary', onClick: () => open() }, t('viewOpen'))),
+          error.length > 0 && h('div', { className: 'ac-error' }, error))
+      }
+
       ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
         name: 'sidebar.panellist',
         id: 'agentcomm',
         order: 30,
         label: () => t('app'),
       }, AgentCommIcon))
+
+      ctx.slots.inject('conversation.view', () => ctx.slots.register({
+        name: 'conversation.view',
+        id: 'agentcomm',
+        order: 40,
+        label: () => t('app'),
+      }, AgentCommView))
 
       ctx.slots.inject('main', () => ctx.slots.register({
         name: 'main',
@@ -903,7 +1025,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale'],
+      inject: ['slots', 'locale', 'layout'],
       apply,
     }
   },
