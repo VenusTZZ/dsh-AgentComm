@@ -1,0 +1,9 @@
+# AgentComm: one Host row (chat hub, agent tool, HTTP/SSE surface) and its Web UI.
+- insert:
+    - id: agentcomm
+      name: '@local/agentcomm'
+      config:
+        # Optional. Defaults to $DSH_HOME/agentcomm. Holds identity, rooms, and messages.
+        # dataDir: '/absolute/path'
+        # Maximum number of agent messages in a row before automatic wakes pause.
+        maxStreak: 8
