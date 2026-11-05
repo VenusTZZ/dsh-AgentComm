@@ -508,10 +508,13 @@ window.__ModuleLoader__.load({
       .ac-panel-action:hover { background: var(--dsw-alias-bg-layer-2); }
       .ac-panel-arrow { color: var(--dsw-alias-label-secondary); }
       .ac-view { height: 100%; min-height: 0; overflow-y: auto; padding: 22px 24px; display: flex;
-        flex-direction: column; gap: 12px; background: var(--dsw-alias-bg-base);
+        align-items: flex-start; gap: 18px; background: var(--dsw-alias-bg-base);
         color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 1.5; }
       .ac-view * { box-sizing: border-box; }
+      .ac-view-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+      .ac-view > .ac-panel { flex: 0 0 300px; }
       .ac-view-head { display: flex; align-items: center; gap: 10px; }
+      .ac-view-body { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
       .ac-view-title { font-size: 15px; font-weight: 600; }
       .ac-view-sub { font-size: 11.5px; color: var(--dsw-alias-label-secondary); }
       .ac-view-section { margin-top: 4px; font-size: 11px; font-weight: 600; letter-spacing: .4px;
@@ -529,6 +532,10 @@ window.__ModuleLoader__.load({
       .ac-view-empty { padding: 26px 0; display: flex; flex-direction: column; gap: 4px;
         text-align: center; color: var(--dsw-alias-label-secondary); }
       .ac-view-actions { display: flex; justify-content: flex-end; }
+      @media (max-width: 900px) {
+        .ac-view { flex-direction: column; }
+        .ac-view > .ac-panel { flex-basis: auto; width: 100%; }
+      }
       @media (max-width: 1100px) { .ac-members { display: none; } }
       @media (max-width: 760px) { .ac-rail { width: 190px; flex-basis: 190px; } }
     `
@@ -1101,36 +1108,38 @@ window.__ModuleLoader__.load({
 
         return h('div', { className: 'ac-view' },
           h('style', { key: 'agentcomm-view-styles' }, CSS),
-          h('div', { className: 'ac-view-head' },
-            h(Avatar, { name: 'AgentComm', size: 34 }),
-            h('div', null,
-              h('div', { className: 'ac-view-title' }, t('viewTitle')),
-              h('div', { className: 'ac-view-sub' }, t('viewSub')))),
-          h(PluginInfoPanel, { snapshot, t, onOpenSettings: openPluginSettings }),
-          h('div', { className: 'ac-view-section' }, t('viewRooms')),
-          rooms.length === 0
-            ? h('div', { className: 'ac-view-empty' },
-                h('div', { className: 'ac-empty-title' }, t('viewEmpty')),
-                h('div', { className: 'ac-empty-hint' }, t('viewEmptyHint')))
-            : h('div', { className: 'ac-view-rooms' },
-                rooms.map(room => h('button', {
-                  key: room.id,
-                  type: 'button',
-                  className: 'ac-view-room',
-                  onClick: () => open(room.id),
-                },
-                h(Avatar, { name: room.name, size: 30 }),
-                h('span', { className: 'ac-view-room-body' },
-                  h('span', { className: 'ac-view-room-title' },
-                    room.name,
-                    room.network?.connected === true && h('span', { className: 'ac-view-net' }, ` · ${t('connected')}`)),
-                  h('span', { className: 'ac-view-room-sub' },
-                    room.lastMessage === null
-                      ? `${room.members.length} ${t('membersCount')}`
-                      : `${room.lastMessage.senderName}: ${room.lastMessage.text}`))))),
-          h('div', { className: 'ac-view-actions' },
-            h('button', { type: 'button', className: 'ac-btn primary', onClick: () => open() }, t('viewOpen'))),
-          error.length > 0 && h('div', { className: 'ac-error' }, error))
+          h('div', { className: 'ac-view-main' },
+            h('div', { className: 'ac-view-head' },
+              h(Avatar, { name: 'AgentComm', size: 34 }),
+              h('div', null,
+                h('div', { className: 'ac-view-title' }, t('viewTitle')),
+                h('div', { className: 'ac-view-sub' }, t('viewSub')))),
+            h('div', { className: 'ac-view-body' },
+              h('div', { className: 'ac-view-section' }, t('viewRooms')),
+              rooms.length === 0
+                ? h('div', { className: 'ac-view-empty' },
+                    h('div', { className: 'ac-empty-title' }, t('viewEmpty')),
+                    h('div', { className: 'ac-empty-hint' }, t('viewEmptyHint')))
+                : h('div', { className: 'ac-view-rooms' },
+                    rooms.map(room => h('button', {
+                      key: room.id,
+                      type: 'button',
+                      className: 'ac-view-room',
+                      onClick: () => open(room.id),
+                    },
+                    h(Avatar, { name: room.name, size: 30 }),
+                    h('span', { className: 'ac-view-room-body' },
+                      h('span', { className: 'ac-view-room-title' },
+                        room.name,
+                        room.network?.connected === true && h('span', { className: 'ac-view-net' }, ` · ${t('connected')}`)),
+                      h('span', { className: 'ac-view-room-sub' },
+                        room.lastMessage === null
+                          ? `${room.members.length} ${t('membersCount')}`
+                          : `${room.lastMessage.senderName}: ${room.lastMessage.text}`))))),
+              h('div', { className: 'ac-view-actions' },
+                h('button', { type: 'button', className: 'ac-btn primary', onClick: () => open() }, t('viewOpen'))),
+              error.length > 0 && h('div', { className: 'ac-error' }, error))),
+          h(PluginInfoPanel, { snapshot, t, onOpenSettings: openPluginSettings }))
       }
 
       ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({

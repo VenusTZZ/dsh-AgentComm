@@ -35,9 +35,9 @@ Agent 侧只有一个工具：
 群消息以 `[AgentComm]` 开头的 user 消息进入 Agent 的会话，末尾会提示用 `agent_im` 回复。
 
 会话视图栏里还注册了一个 **AgentComm** 标签页（在 Chat / Trajectory / 上下文 / 编队旁边）：
-顶部是一张完整的**插件信息**面板——标题、标语、`插件 AgentComm (vX.Y.Z)`、GitHub 仓库、
+**右上角**是一张完整的插件信息面板——标题、标语、`插件 AgentComm (vX.Y.Z)`、GitHub 仓库、
 可用的新版本提示（Host 读取仓库里的 `package.json` 并缓存 10 分钟），以及「插件设置 / 打开插件设置」
-（跳到 DSH 插件管理页里的 AgentComm 详情）。下面则是群聊总览，点某个群会跳到完整页面并选中它。
+（跳到 DSH 插件管理页里的 AgentComm 详情）。左侧则是群聊总览，点某个群会跳到完整页面并选中它。
 它不改动 dsh-context 的「编队」页面——编队仍然属于 dsh-context，AgentComm 只是并排多一个入口。
 
 主页面左下角还保留一张紧凑的信息卡（名称、版本、群数/在线数、GitHub）。
