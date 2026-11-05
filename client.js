@@ -60,6 +60,10 @@ window.__ModuleLoader__.load({
       networkHint: 'Everyone who shares the same relay, room code, and access token chats in the same room. Run relay/server.mjs on a host every participant can reach.',
       networkOptional: 'Network (optional)',
       networkFailed: 'Network error',
+      aboutDesc: 'Group chat with agents, local or relayed',
+      aboutRepo: 'GitHub',
+      roomsUnit: 'rooms',
+      agentsUnit: 'online',
     }
 
     const ZH = {
@@ -106,6 +110,10 @@ window.__ModuleLoader__.load({
       networkHint: '填同一个 Relay、房间号和口令的人会在同一个群里。Relay 可以用 relay/server.mjs 部署在任何大家都能访问的机器上。',
       networkOptional: '联网（可选）',
       networkFailed: '网络异常',
+      aboutDesc: '本地与联网的 Agent 群聊',
+      aboutRepo: 'GitHub',
+      roomsUnit: '个群',
+      agentsUnit: '个在线',
     }
 
     const PALETTE = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0891b2', '#16a34a', '#ca8a04', '#475569']
@@ -132,6 +140,11 @@ window.__ModuleLoader__.load({
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
       return date.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    }
+
+    function repositoryHref(value) {
+      if (typeof value !== 'string' || value.length === 0) return ''
+      return value.replace(/^git\+/, '').replace(/\.git$/, '')
     }
 
     async function request(path, init) {
@@ -333,6 +346,18 @@ window.__ModuleLoader__.load({
         background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1); }
       .ac-net-status.ok { color: var(--dsw-alias-state-success-primary); }
       .ac-net-status.bad { color: var(--dsw-alias-state-error-primary); }
+      .ac-about { margin: 0 12px 12px; padding: 10px 11px; border-radius: 10px; display: flex;
+        flex-direction: column; gap: 5px; background: var(--dsw-alias-bg-layer-1);
+        border: 1px solid var(--dsw-alias-border-l1); }
+      .ac-about-head { display: flex; align-items: center; gap: 6px; }
+      .ac-about-name { flex: 1; min-width: 0; font-size: 12px; font-weight: 600;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ac-about-ver { flex: 0 0 auto; font-size: 10px; color: var(--dsw-alias-label-secondary);
+        border: 1px solid var(--dsw-alias-border-l1); border-radius: 999px; padding: 0 5px; }
+      .ac-about-desc { font-size: 11px; color: var(--dsw-alias-label-secondary); line-height: 1.45; }
+      .ac-about-stats { font-size: 10.5px; color: var(--dsw-alias-label-secondary); }
+      .ac-about-link { font-size: 11px; color: var(--dsw-alias-brand-primary); text-decoration: none; }
+      .ac-about-link:hover { text-decoration: underline; }
       @media (max-width: 1100px) { .ac-members { display: none; } }
       @media (max-width: 760px) { .ac-rail { width: 190px; flex-basis: 190px; } }
     `
@@ -626,7 +651,22 @@ window.__ModuleLoader__.load({
             type: 'button',
             className: 'ac-new',
             onClick: () => setCreating(true),
-          }, `+ ${t('newRoom')}`))
+          }, `+ ${t('newRoom')}`),
+          h('div', { className: 'ac-about' },
+            h('div', { className: 'ac-about-head' },
+              h(AgentCommIcon, { size: 14, active: false }),
+              h('span', { className: 'ac-about-name' }, snapshot?.plugin?.name ?? t('app')),
+              typeof snapshot?.plugin?.version === 'string' && snapshot.plugin.version.length > 0
+                && h('span', { className: 'ac-about-ver' }, `v${snapshot.plugin.version}`)),
+            h('div', { className: 'ac-about-desc' }, t('aboutDesc')),
+            h('div', { className: 'ac-about-stats' },
+              `${(snapshot?.rooms ?? []).length} ${t('roomsUnit')} · ${(snapshot?.agents ?? []).filter(agent => agent.status === 'idle').length} ${t('agentsUnit')}`),
+            repositoryHref(snapshot?.plugin?.repository).length > 0 && h('a', {
+              className: 'ac-about-link',
+              href: repositoryHref(snapshot.plugin.repository),
+              target: '_blank',
+              rel: 'noreferrer',
+            }, `${t('aboutRepo')} ↗`)))
 
         const chat = h('section', { className: 'ac-chat' },
           activeRoom === null

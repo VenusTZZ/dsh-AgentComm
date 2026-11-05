@@ -156,7 +156,13 @@ try {
 
   const state = await api('/state', undefined, 'GET')
   if (state.rooms[0].network?.connected !== true) throw new Error('network status is not connected')
-  console.log('state reports connected network')
+  if (typeof state.plugin?.version !== 'string' || state.plugin.version.length === 0) {
+    throw new Error('plugin info is missing from state')
+  }
+  if (typeof state.plugin.repository !== 'string' || !state.plugin.repository.includes('github.com')) {
+    throw new Error('plugin repository is missing from state')
+  }
+  console.log('state reports connected network and plugin info', state.plugin.name, state.plugin.version)
 
   console.log('SMOKE OK')
 } catch (error) {

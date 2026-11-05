@@ -67,8 +67,26 @@ export function apply(ctx, config = {}) {
   const networks = new Map()
   let saveTimer
   let saveChain = Promise.resolve()
+  /** Manifest facts shown by the page's info card; static for one loaded generation. */
+  let pluginInfo = { name: 'AgentComm', version: '0.0.0', description: '', repository: '' }
 
-  const ready = loadState()
+  const ready = Promise.all([loadState(), loadPluginInfo()])
+
+  async function loadPluginInfo() {
+    try {
+      const manifest = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'))
+      pluginInfo = {
+        name: typeof manifest.name === 'string' ? manifest.name : pluginInfo.name,
+        version: typeof manifest.version === 'string' ? manifest.version : pluginInfo.version,
+        description: typeof manifest.description === 'string' ? manifest.description : '',
+        repository: typeof manifest.repository === 'string'
+          ? manifest.repository
+          : (typeof manifest.repository?.url === 'string' ? manifest.repository.url : ''),
+      }
+    } catch (error) {
+      ctx.logger?.warn?.(`AgentComm: could not read package.json: ${error?.message ?? error}`)
+    }
+  }
 
   async function loadState() {
     await mkdir(dataDir, { recursive: true })
@@ -231,6 +249,7 @@ export function apply(ctx, config = {}) {
 
   function stateSnapshot() {
     return {
+      plugin: { ...pluginInfo },
       me: { id: state.me.id, name: state.me.name },
       agents: ctx.agents.list().map(agent => ({
         id: String(agent.id),

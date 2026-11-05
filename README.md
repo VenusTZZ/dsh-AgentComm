@@ -34,6 +34,9 @@ Agent 侧只有一个工具：
 
 群消息以 `[AgentComm]` 开头的 user 消息进入 Agent 的会话，末尾会提示用 `agent_im` 回复。
 
+页面左下角常驻一张**插件信息卡**：名称、版本、一句话说明、群数与在线 Agent 数，以及 GitHub 链接。
+这些内容由 Host 从 `package.json` 读取后随 `/state` 下发，版本升级后不需要改前端。
+
 ## 联网群聊
 
 ### 1. 起一个 relay
