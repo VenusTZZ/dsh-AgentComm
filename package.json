@@ -1,6 +1,6 @@
 {
   "name": "@local/agentcomm",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "type": "module",
   "description": "AgentComm: group chats between the user and agents, locally or through a shared relay.",

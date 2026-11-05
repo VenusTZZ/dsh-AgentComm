@@ -88,6 +88,23 @@ export function apply(ctx, config = {}) {
     }
   }
 
+  const LATEST_MANIFEST_URL = 'https://raw.githubusercontent.com/VenusTZZ/dsh-AgentComm/main/package.json'
+  let latestCache = { at: 0, version: null }
+
+  /** Latest published version from the repository, cached; a null version is retried after a minute. */
+  async function latestVersion() {
+    const ttl = latestCache.version === null ? 60_000 : 10 * 60_000
+    if (Date.now() - latestCache.at < ttl) return latestCache
+    try {
+      const response = await fetch(LATEST_MANIFEST_URL, { signal: AbortSignal.timeout(5_000) })
+      const manifest = response.ok ? await response.json() : null
+      latestCache = { at: Date.now(), version: typeof manifest?.version === 'string' ? manifest.version : null }
+    } catch {
+      latestCache = { at: Date.now(), version: null }
+    }
+    return latestCache
+  }
+
   async function loadState() {
     await mkdir(dataDir, { recursive: true })
     try {
@@ -741,6 +758,11 @@ export function apply(ctx, config = {}) {
 
     if (req.method === 'GET' && (path === '/state' || path === '/state/')) {
       json(res, 200, stateSnapshot())
+      return
+    }
+
+    if (req.method === 'GET' && (path === '/latest' || path === '/latest/')) {
+      json(res, 200, await latestVersion())
       return
     }
 

@@ -72,6 +72,11 @@ window.__ModuleLoader__.load({
       viewEmpty: 'No chats yet',
       viewEmptyHint: 'Open the full page and create the first one',
       viewRooms: 'Chats',
+      pluginInfo: 'Plugin info',
+      pluginHint: 'Instant messaging for agents ⭐',
+      plugin: 'Plugin',
+      pluginSettings: 'Plugin settings',
+      openPluginSettings: 'Open plugin settings',
     }
 
     const ZH = {
@@ -128,6 +133,11 @@ window.__ModuleLoader__.load({
       viewEmpty: '还没有群聊',
       viewEmptyHint: '打开完整页面创建第一个群聊',
       viewRooms: '群聊',
+      pluginInfo: '插件信息',
+      pluginHint: '给 Agent 用的即时通讯 ⭐',
+      plugin: '插件',
+      pluginSettings: '插件设置',
+      openPluginSettings: '打开插件设置',
     }
 
     const PALETTE = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0891b2', '#16a34a', '#ca8a04', '#475569']
@@ -159,6 +169,33 @@ window.__ModuleLoader__.load({
     function repositoryHref(value) {
       if (typeof value !== 'string' || value.length === 0) return ''
       return value.replace(/^git\+/, '').replace(/\.git$/, '')
+    }
+
+    function repositorySlug(value) {
+      const match = /^https?:\/\/github\.com\/([^/]+)\/([^/#]+)/.exec(repositoryHref(value))
+      return match === null ? '' : `${match[1]}/${match[2]}`
+    }
+
+    function isNewerVersion(remote, current) {
+      const parse = value => String(value).replace(/^v/i, '').split('-')[0].split('.').map(part => Number.parseInt(part, 10) || 0)
+      const next = parse(remote)
+      const local = parse(current)
+      for (let index = 0; index < 3; index += 1) {
+        if ((next[index] ?? 0) > (local[index] ?? 0)) return true
+        if ((next[index] ?? 0) < (local[index] ?? 0)) return false
+      }
+      return false
+    }
+
+    let latestVersionRequest = null
+
+    function fetchLatestVersion() {
+      if (latestVersionRequest === null) {
+        latestVersionRequest = request('/latest')
+          .then(data => (typeof data?.version === 'string' ? data.version : null))
+          .catch(() => null)
+      }
+      return latestVersionRequest
     }
 
     async function request(path, init) {
@@ -265,6 +302,62 @@ window.__ModuleLoader__.load({
           target: '_blank',
           rel: 'noreferrer',
         }, `${t('aboutRepo')} ↗`))
+    }
+
+    function PluginInfoPanel({ snapshot, t, onOpenSettings }) {
+      const [latest, setLatest] = React.useState(null)
+
+      React.useEffect(() => {
+        let alive = true
+        void fetchLatestVersion().then(version => {
+          if (alive) setLatest(version)
+        })
+        return () => {
+          alive = false
+        }
+      }, [])
+
+      const version = typeof snapshot?.plugin?.version === 'string' ? snapshot.plugin.version : ''
+      const repo = repositoryHref(snapshot?.plugin?.repository)
+      const slug = repositorySlug(snapshot?.plugin?.repository)
+      const newer = version.length > 0 && typeof latest === 'string' && isNewerVersion(latest, version)
+
+      return h('div', { className: 'ac-panel' },
+        h('div', { className: 'ac-panel-head' },
+          h('span', { className: 'ac-panel-icon' }, h(AgentCommIcon, { size: 14, active: false })),
+          h('span', null, t('pluginInfo'))),
+        repo.length > 0
+          ? h('a', {
+              className: 'ac-panel-hint',
+              href: repo,
+              target: '_blank',
+              rel: 'noreferrer',
+            }, t('pluginHint'))
+          : h('div', { className: 'ac-panel-hint' }, t('pluginHint')),
+        h('div', { className: 'ac-panel-rows' },
+          h('div', { className: 'ac-panel-row' },
+            h('span', { className: 'ac-panel-key' }, t('plugin')),
+            h('span', { className: 'ac-panel-value' },
+              `${t('app')} (v${version.length > 0 ? version : '0.0.0'})`,
+              newer && h('a', {
+                className: 'ac-panel-update',
+                href: `${repo}/releases`,
+                target: '_blank',
+                rel: 'noreferrer',
+              }, `↑ v${latest}`))),
+          repo.length > 0 && h('div', { className: 'ac-panel-row' },
+            h('span', { className: 'ac-panel-key' }, t('aboutRepo')),
+            h('a', {
+              className: 'ac-panel-value ac-panel-link',
+              href: repo,
+              target: '_blank',
+              rel: 'noreferrer',
+            }, slug.length > 0 ? slug : repo))),
+        h('div', { className: 'ac-panel-sep' }),
+        h('div', { className: 'ac-panel-section' }, t('pluginSettings')),
+        h('button', { type: 'button', className: 'ac-panel-action', onClick: onOpenSettings },
+          h('span', null, t('openPluginSettings')),
+          h('span', { className: 'ac-panel-arrow' }, '→')))
     }
 
     const CSS = `
@@ -390,6 +483,30 @@ window.__ModuleLoader__.load({
       .ac-about-stats { font-size: 10.5px; color: var(--dsw-alias-label-secondary); }
       .ac-about-link { font-size: 11px; color: var(--dsw-alias-brand-primary); text-decoration: none; }
       .ac-about-link:hover { text-decoration: underline; }
+      .ac-panel { display: flex; flex-direction: column; gap: 8px; padding: 14px 15px;
+        border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px;
+        background: var(--dsw-alias-bg-layer-1); }
+      .ac-panel-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+      .ac-panel-icon { display: inline-flex; color: var(--dsw-alias-label-secondary); }
+      .ac-panel-hint { font-size: 12px; color: var(--dsw-alias-brand-primary); text-decoration: none; }
+      .ac-panel-hint:hover { text-decoration: underline; }
+      .ac-panel-rows { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
+      .ac-panel-row { display: flex; align-items: flex-start; gap: 12px; font-size: 12px; }
+      .ac-panel-key { flex: 0 0 64px; color: var(--dsw-alias-label-secondary); }
+      .ac-panel-value { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+        word-break: break-word; }
+      .ac-panel-link { color: var(--dsw-alias-brand-primary); text-decoration: none; }
+      .ac-panel-link:hover { text-decoration: underline; }
+      .ac-panel-update { font-size: 11px; color: var(--dsw-alias-state-warn-primary); text-decoration: none; }
+      .ac-panel-update:hover { text-decoration: underline; }
+      .ac-panel-sep { height: 1px; margin: 3px 0; background: var(--dsw-alias-border-l1); }
+      .ac-panel-section { font-size: 11px; font-weight: 600; letter-spacing: .3px;
+        text-transform: uppercase; color: var(--dsw-alias-label-secondary); }
+      .ac-panel-action { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        padding: 7px 9px; border: 0; border-radius: 8px; background: transparent;
+        color: var(--dsw-alias-label-primary); cursor: pointer; font-size: 12px; text-align: left; }
+      .ac-panel-action:hover { background: var(--dsw-alias-bg-layer-2); }
+      .ac-panel-arrow { color: var(--dsw-alias-label-secondary); }
       .ac-view { height: 100%; min-height: 0; overflow-y: auto; padding: 22px 24px; display: flex;
         flex-direction: column; gap: 12px; background: var(--dsw-alias-bg-base);
         color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 1.5; }
@@ -397,7 +514,6 @@ window.__ModuleLoader__.load({
       .ac-view-head { display: flex; align-items: center; gap: 10px; }
       .ac-view-title { font-size: 15px; font-weight: 600; }
       .ac-view-sub { font-size: 11.5px; color: var(--dsw-alias-label-secondary); }
-      .ac-view .ac-about-page { margin: 0; padding: 12px 13px; }
       .ac-view-section { margin-top: 4px; font-size: 11px; font-weight: 600; letter-spacing: .4px;
         text-transform: uppercase; color: var(--dsw-alias-label-secondary); }
       .ac-view-rooms { display: flex; flex-direction: column; gap: 6px; }
@@ -970,6 +1086,19 @@ window.__ModuleLoader__.load({
           ctx.layout.selectPanel('agentcomm')
         }
 
+        function openPluginSettings() {
+          const navigation = ctx.get('pluginNavigation')
+          if (navigation !== undefined && typeof navigation.openBundle === 'function') {
+            navigation.openBundle('@local/agentcomm')
+            return
+          }
+          try {
+            ctx.layout.selectPanel('plugins')
+          } catch {
+            // A surface without the Plugins panel keeps the page as it is.
+          }
+        }
+
         return h('div', { className: 'ac-view' },
           h('style', { key: 'agentcomm-view-styles' }, CSS),
           h('div', { className: 'ac-view-head' },
@@ -977,7 +1106,7 @@ window.__ModuleLoader__.load({
             h('div', null,
               h('div', { className: 'ac-view-title' }, t('viewTitle')),
               h('div', { className: 'ac-view-sub' }, t('viewSub')))),
-          h(InfoCard, { snapshot, t, className: 'ac-about-page' }),
+          h(PluginInfoPanel, { snapshot, t, onOpenSettings: openPluginSettings }),
           h('div', { className: 'ac-view-section' }, t('viewRooms')),
           rooms.length === 0
             ? h('div', { className: 'ac-view-empty' },
